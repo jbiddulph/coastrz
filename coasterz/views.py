@@ -1,7 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .serializers import UserSerializer
+from .serializers import UserSerializer, VenueSerializer
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
@@ -64,3 +64,16 @@ def logout(request):
     else:
         # If no token is found, return an error response
         return Response({"detail": "Invalid token or user not logged in"}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(["GET"])
+@authentication_classes([SessionAuthentication, TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def FavouredVenuesAPIView(request):
+    user = request.user
+    if user.is_authenticated:
+      favoured_venues = user.favoured_venues.all()
+      serializer = VenueSerializer(favoured_venues, many=True)
+      return Response(serializer.data)
+    else:
+        # Handle case when user is not authenticated
+        return Response({"message": "User is not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
