@@ -6,7 +6,10 @@ from rest_framework import status
 from django.shortcuts import render
 from django.http import JsonResponse
 from .models import Venue
-from .serializers import VenueSerializer
+from .serializers import NoteSerializer, VenueSerializer
+from django.core.serializers import serialize
+from django.contrib.gis.db.models.functions import AsGeoJSON
+from django.contrib.gis.serializers.geojson import Serializer as GeoJSONSerializer
 import os
 from django.conf import settings
 from django.db.models import F
@@ -24,6 +27,12 @@ class VenueListView(APIView):
         venues = paginator.paginate_queryset(self.queryset, request)
         serializer = self.serializer_class(venues, many=True)
         return paginator.get_paginated_response(serializer.data)
+
+class VenueGEOJsonListView(APIView):
+    def get(self, request):
+        venues = Venue.objects.annotate(geojson=AsGeoJSON('geometry'))
+        geojson_data = serialize('geojson', venues, geometry_field='geojson')
+        return JsonResponse(geojson_data, safe=False)
   
 class VenueAdd(APIView): 
   def post(self, request):
@@ -201,5 +210,76 @@ class VenueTowns(APIView):
             town_venue = {'town': town, 'count': venue_count}
             towns_and_venues.append(town_venue)
 
-        # Return the JSON response
         return JsonResponse(towns_and_venues, safe=False)
+  
+class VenueNames(APIView):
+    pagination_class = PageNumberPagination
+
+    def get(self, request):
+        paginator = self.pagination_class()
+        venues = Venue.objects.all()
+
+        # Extract distinct venuename from venues
+        filtered_names = venues \
+              .values_list('venuename', flat=True) \
+              .distinct() \
+              # .exclude(venuename__regex=r'^\d+\s') \
+              # .exclude(venuename__endswith=' Road') \
+              # .exclude(venuename__endswith=' Street') \
+              # .exclude(venuename__endswith=' Terrace') \
+              # .exclude(venuename__endswith=' Lane') \
+              # .exclude(venuename__endswith=' Drive') \
+
+        ordering = request.GET.get('ordering', '-venue_count')
+        # Query venues count per filtered venuename
+        venues_count_by_venuename = Venue.objects \
+            .filter(venuename__in=filtered_names) \
+            .values('venuename') \
+            .annotate(venue_count=Count('id')) \
+            .order_by(ordering)
+
+        # Paginate the results
+        paginated_venues = paginator.paginate_queryset(venues_count_by_venuename, request)
+        
+        # Create a list of JSON objects with venuename and venue count
+        name_and_venues = []
+        for item in paginated_venues:
+            venuename = item['venuename']
+            venue_count = item['venue_count']
+            name_venue = {'venuename': venuename, 'count': venue_count}
+            name_and_venues.append(name_venue)
+
+        return paginator.get_paginated_response(name_and_venues)
+    
+from rest_framework.decorators import authentication_classes, permission_classes
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+
+@authentication_classes([SessionAuthentication, TokenAuthentication])
+@permission_classes([IsAuthenticated])
+class VenueNote(APIView):
+    def post(self, request, venue_id):
+        try:
+            venue = Venue.objects.get(pk=venue_id)
+        except Venue.DoesNotExist:
+            return Response({"detail": "Venue not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Extract user from request
+        user = request.user
+        
+        # Combine request data with user
+        request_data_with_user = request.data.copy()
+        request_data_with_user['user'] = user.id
+        
+        # Create the serializer instance with the modified request data
+        serializer = NoteSerializer(data=request_data_with_user)
+        
+        # Validate the serializer
+        if serializer.is_valid():
+            # Set the venue field to the venue object
+            serializer.validated_data['venue'] = venue
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        # Return serializer errors if validation fails
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

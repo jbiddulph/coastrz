@@ -4,11 +4,14 @@ from rest_framework.response import Response
 from .serializers import UserSerializer, VenueSerializer
 from rest_framework import status
 from rest_framework.authtoken.models import Token
+from coasterz.models import UserProfile
 from django.contrib.auth.models import User
+from django.views.decorators.csrf import csrf_exempt
 
 from django.shortcuts import get_object_or_404
 
 @api_view(["POST"])
+@csrf_exempt
 def login(request):
   user = get_object_or_404(User, username=request.data['username'])
   if not user.check_password(request.data['password']):
@@ -70,10 +73,16 @@ def logout(request):
 @permission_classes([IsAuthenticated])
 def FavouredVenuesAPIView(request):
     user = request.user
+    print("Authenticated User:", user.username, user.id)  # Add this line for debugging
     if user.is_authenticated:
-      favoured_venues = user.favoured_venues.all()
-      serializer = VenueSerializer(favoured_venues, many=True)
-      return Response(serializer.data)
+        try:
+            user_profile = UserProfile.objects.get(user=user)
+            favoured_venues = user_profile.favoured_venues.all()
+            serializer = VenueSerializer(favoured_venues, many=True)
+            return Response(serializer.data)
+        except UserProfile.DoesNotExist:
+            print("UserProfile does not exist for user:", user.username, user.id)  # Add this line for debugging
+            return Response({"message": "UserProfile does not exist"}, status=status.HTTP_404_NOT_FOUND)
     else:
-        # Handle case when user is not authenticated
+        print("User is not authenticated")  # Add this line for debugging
         return Response({"message": "User is not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
