@@ -24,8 +24,12 @@ class Venue(models.Model):
   is_live = models.CharField(max_length=255)
   created_at = models.DateTimeField(auto_now_add=True)
   updated_at = models.DateTimeField(auto_now=True)
+  def __str__(self):
+    return f"{self.venuename}, {self.address}, {self.town}, {self.county}"
 class Note(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    venue = models.ForeignKey(Venue, on_delete=models.CASCADE)
-    text = models.TextField()
-    created_at = models.DateTimeField(default=timezone.now)
+  user = models.ForeignKey(User, on_delete=models.CASCADE)
+  venue = models.ForeignKey(Venue, on_delete=models.CASCADE)
+  text = models.TextField()
+  created_at = models.DateTimeField(default=timezone.now)
+  def __str__(self):
+    return f"The Venue: {self.venue}, have the note: {self.text}"
