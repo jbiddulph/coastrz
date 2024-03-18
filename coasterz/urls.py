@@ -9,5 +9,6 @@ urlpatterns = [
   re_path('get_user', views.get_user),
   re_path('favoured-venues/',views.FavouredVenuesAPIView),
   re_path('logout', views.logout),
-  path('api/venues/', include('venues.urls'))
+  path('api/venues/', include('venues.urls')),
+  path('api/notes/', include('notes.urls'))
 ]
