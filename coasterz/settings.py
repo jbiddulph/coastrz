@@ -9,11 +9,23 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Define base URL for local development
+BASE_URL_LOCAL = 'http://127.0.0.1:8000/'
+
+# Define base URL for live production
+BASE_URL_LIVE = 'https://your-production-domain.com/'
+
+# Determine which base URL to use based on environment
+if os.environ.get('ENVIRONMENT') == 'production':
+    BASE_URL = BASE_URL_LIVE
+else:
+    BASE_URL = BASE_URL_LOCAL
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -41,6 +53,7 @@ INSTALLED_APPS = [
     'coasterz',
     'venues',
     'notes',
+    'events',
     'corsheaders',
 ]
 
@@ -156,3 +169,5 @@ CSRF_COOKIE_NAME = 'csrftoken'
 
 # GDAL_LIBRARY_PATH = '/opt/homebrew/opt/gdal/lib/libgdal.dylib'
 # GEOS_LIBRARY_PATH = '/opt/homebrew/Cellar/geos/3.12.1/lib/libgeos.dylib'
+
+CSRF_COOKIE_SECURE = False  # Set to True for production

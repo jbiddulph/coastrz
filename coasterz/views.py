@@ -6,12 +6,13 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from coasterz.models import UserProfile
 from django.contrib.auth.models import User
-from django.views.decorators.csrf import csrf_exempt
+# from django.views.decorators.csrf import csrf_exempt
+from django.middleware.csrf import get_token
+from django.http import JsonResponse
 
 from django.shortcuts import get_object_or_404
 
 @api_view(["POST"])
-@csrf_exempt
 def login(request):
   user = get_object_or_404(User, username=request.data['username'])
   if not user.check_password(request.data['password']):
@@ -86,3 +87,7 @@ def FavouredVenuesAPIView(request):
     else:
         print("User is not authenticated")  # Add this line for debugging
         return Response({"message": "User is not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+    
+def get_csrf_token(request):
+    csrf_token = get_token(request)
+    return JsonResponse({'csrfToken': csrf_token})

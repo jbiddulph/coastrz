@@ -2,17 +2,29 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from venues.models import Venue
+from .models import Note  # Import the Note model
 from .serializers import NoteSerializer
 from django.conf import settings
 from rest_framework.permissions import AllowAny
-# Create your views here.
 from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
+from django.views.decorators.csrf import csrf_exempt
 
 @authentication_classes([SessionAuthentication, TokenAuthentication])
 @permission_classes([IsAuthenticated])
 class VenueNote(APIView):
+    def get(self, request, venue_id):
+        try:
+            venue = Venue.objects.get(pk=venue_id)
+        except Venue.DoesNotExist:
+            return Response({"detail": "Venue not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Retrieve all notes for the specified venue
+        notes = Note.objects.filter(venue=venue)
+        serializer = NoteSerializer(notes, many=True)
+        return Response(serializer.data)
+
     def post(self, request, venue_id):
         try:
             venue = Venue.objects.get(pk=venue_id)
