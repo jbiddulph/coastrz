@@ -1,4 +1,5 @@
 from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework import status
 from venues.models import Venue
@@ -14,6 +15,16 @@ from django.views.decorators.csrf import csrf_exempt
 # Create your views here.
 @authentication_classes([SessionAuthentication, TokenAuthentication])
 @permission_classes([IsAuthenticated])
+class Events(APIView):
+    pagination_class = PageNumberPagination
+    queryset = Event.objects.all()
+    serializer_class = EventSerializer
+
+    def get(self, request):
+        paginator = self.pagination_class()
+        events = paginator.paginate_queryset(self.queryset, request)
+        serializer = self.serializer_class(events, many=True)
+        return paginator.get_paginated_response(serializer.data)
 class VenueEvent(APIView):
   def get(self, request, venue_id):
         try:
@@ -40,7 +51,7 @@ class VenueEvent(APIView):
       request_data_with_user['user'] = user.id
       
       # Create the serializer instance with the modified request data
-      serializer = EventSerializer(data=request_data_with_user)
+      serializer = EventSerializer(data=request_data_with_user, partial=True)
       
       # Validate the serializer
       if serializer.is_valid():
