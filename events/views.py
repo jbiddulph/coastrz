@@ -12,9 +12,6 @@ from rest_framework.authentication import SessionAuthentication, TokenAuthentica
 from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.csrf import csrf_exempt
 
-# Create your views here.
-@authentication_classes([SessionAuthentication, TokenAuthentication])
-@permission_classes([IsAuthenticated])
 class Events(APIView):
     pagination_class = PageNumberPagination
     queryset = Event.objects.all()
